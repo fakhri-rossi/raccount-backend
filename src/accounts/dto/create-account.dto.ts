@@ -10,7 +10,7 @@ export class CreateAccountDto {
 
   @IsString()
   @IsOptional()
-  parent_id?: string;
+  parentId?: string;
 
   @IsString()
   name: string;

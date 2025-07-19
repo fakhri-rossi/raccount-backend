@@ -9,11 +9,11 @@ export class Account {
   @Prop({ required: true })
   code: string;
 
-  @Prop({ required: true })
-  type: AccountType;
+  @Prop({ required: true, enum: AccountType })
+  type: string;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Account' })
-  parent_id: Account;
+  parentId: Account;
 
   @Prop({ required: true })
   level: number;

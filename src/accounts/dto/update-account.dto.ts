@@ -8,7 +8,7 @@ export class UpdateAccountDto {
 
   @IsString()
   @IsOptional()
-  parent_id?: string;
+  parentId?: string;
 
   @IsString()
   @IsOptional()
