@@ -1,8 +1,22 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Category } from './schemas/category.schema';
-import { Model } from 'mongoose';
+import { Category, CategoryDocument } from './schemas/category.schema';
+import { FilterQuery, Model } from 'mongoose';
 import { CreateCategoryDto } from './dto/create-category.dto';
+
+export interface FindCategoryOptions {
+  name?: string;
+  codePrefix?: number;
+  isNormalBalanceDebit?: boolean;
+  skip?: number;
+  limit?: number;
+}
 
 @Injectable()
 export class CategoriesService {
@@ -30,5 +44,38 @@ export class CategoriesService {
     });
 
     return createdCategory.save();
+  }
+
+  async find(options: FindCategoryOptions = {}): Promise<Category[]> {
+    const {
+      name,
+      codePrefix,
+      isNormalBalanceDebit,
+      limit = 9,
+      skip = 0,
+    } = options;
+
+    const filter: FilterQuery<CategoryDocument> = {};
+
+    if (name) filter.name = { $regex: name, $options: 'i' };
+
+    if (codePrefix) filter.codePrefix = codePrefix;
+
+    if (isNormalBalanceDebit)
+      filter.isNormalBalanceDebit = isNormalBalanceDebit;
+
+    return await this.categoryModel.find(filter).skip(skip).limit(limit);
+  }
+
+  async findById(categoryId: string): Promise<Category | null> {
+    try {
+      const res = await this.categoryModel.findById(categoryId);
+      if (!res) throw new NotFoundException('Invalid id: Category not found');
+      return res;
+    } catch (error) {
+      if (error.name === 'CastError' || error.name === 'NotFoundException')
+        throw new BadRequestException('Invalid id, category not found');
+      throw new InternalServerErrorException(error);
+    }
   }
 }
