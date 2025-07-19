@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AccountsModule } from './accounts/accounts.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AccountsModule } from './accounts/accounts.module';
       process.env.DB_URL || 'mongodb://localhost:27017/mydb',
     ),
     AccountsModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
