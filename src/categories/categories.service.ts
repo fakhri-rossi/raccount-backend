@@ -2,12 +2,11 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Category, CategoryDocument } from './schemas/category.schema';
-import { FilterQuery, Model } from 'mongoose';
+import { FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { CreateCategoryDto } from './dto/create-category.dto';
 
 export interface FindCategoryOptions {
@@ -64,18 +63,19 @@ export class CategoriesService {
     if (isNormalBalanceDebit)
       filter.isNormalBalanceDebit = isNormalBalanceDebit;
 
-    return await this.categoryModel.find(filter).skip(skip).limit(limit);
+    return await this.categoryModel.find(filter).skip(skip).limit(limit).exec();
   }
 
   async findById(categoryId: string): Promise<Category | null> {
-    try {
-      const res = await this.categoryModel.findById(categoryId);
-      if (!res) throw new NotFoundException('Invalid id: Category not found');
-      return res;
-    } catch (error) {
-      if (error.name === 'CastError' || error.name === 'NotFoundException')
-        throw new BadRequestException('Invalid id, category not found');
-      throw new InternalServerErrorException(error);
+    if (!isValidObjectId(categoryId)) {
+      throw new BadRequestException('Invalid id format');
     }
+
+    const result = await this.categoryModel.findById(categoryId).exec();
+
+    if (!result) {
+      throw new NotFoundException('Category not found');
+    }
+    return result;
   }
 }
