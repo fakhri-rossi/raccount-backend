@@ -1,16 +1,15 @@
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
-import { AccountType } from 'src/common/enums/accountType.enum';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateAccountDto {
-  @IsString()
-  code: string;
+  @IsNumber()
+  code: number;
 
-  @IsEnum(AccountType)
-  type: AccountType;
+  @IsString()
+  categoryId: string;
 
   @IsString()
   @IsOptional()
-  parentId?: string;
+  groupId?: string;
 
   @IsString()
   name: string;
@@ -18,7 +17,4 @@ export class CreateAccountDto {
   @IsString()
   @IsOptional()
   description?: string;
-
-  @IsBoolean()
-  isNormalBalanceDebit: boolean;
 }

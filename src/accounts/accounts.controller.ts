@@ -3,6 +3,7 @@ import { AccountsService } from './accounts.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { Account } from './schemas/account.schema';
 import { AccountType } from 'src/common/enums/accountType.enum';
+import { SearchAccountDto } from './dto/search-account.dto';
 
 @Controller('accounts')
 export class AccountsController {
@@ -14,24 +15,8 @@ export class AccountsController {
   }
 
   @Get()
-  async search(
-    @Query('code') code?: string,
-    @Query('type') type?: AccountType,
-    @Query('parentId') parentId?: string,
-    @Query('level') level?: number,
-    @Query('name') name?: string,
-    @Query('skip') skip?: number,
-    @Query('limit') limit?: number,
-  ): Promise<Account[]> {
-    return this.accountService.find({
-      code,
-      type,
-      parentId,
-      level,
-      skip,
-      limit,
-      name,
-    });
+  async search(@Query() query: SearchAccountDto): Promise<Account[]> {
+    return this.accountService.find(query);
   }
 
   @Get('/:id')
