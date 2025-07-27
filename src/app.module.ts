@@ -6,6 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AccountsModule } from './accounts/accounts.module';
 import { CategoriesModule } from './categories/categories.module';
 import { GroupsModule } from './groups/groups.module';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { GroupsModule } from './groups/groups.module';
     AccountsModule,
     CategoriesModule,
     GroupsModule,
+    TransactionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
