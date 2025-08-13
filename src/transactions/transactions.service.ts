@@ -74,8 +74,6 @@ export class TransactionsService {
     }
   }
 
-  async;
-
   private validateEntryStructure(entries: Entry[]) {
     // Forbid empty entry
     if (entries.length < 2) {
@@ -93,8 +91,6 @@ export class TransactionsService {
       seen.add(entry.accountId);
     }
   }
-
-  async find(): Promise<Transaction[]> {}
 
   private async validateEntriesAsync(
     entries: Entry[],
