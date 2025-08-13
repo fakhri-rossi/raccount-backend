@@ -1,4 +1,4 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { Account } from 'src/accounts/schemas/account.schema';
 
@@ -17,3 +17,5 @@ export class Entry {
   @Prop({ required: true })
   credit: number;
 }
+
+export const EntrySchema = SchemaFactory.createForClass(Entry);
