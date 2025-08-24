@@ -13,7 +13,7 @@ export class TransactionsController {
     return this.transactionService.create(dto);
   }
 
-  @Get()
+  @Post('/search')
   async find(@Body() dto: SearchTransactionDto): Promise<Transaction[]> {
     return this.transactionService.find(dto);
   }
