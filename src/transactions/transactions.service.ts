@@ -2,13 +2,15 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Transaction } from './schemas/transaction.schema';
-import { Connection, isValidObjectId, Model } from 'mongoose';
+import { Transaction, TransactionDocument } from './schemas/transaction.schema';
+import { Connection, FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { Entry } from './schemas/entry.schema';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { Account } from 'src/accounts/schemas/account.schema';
+import { SearchTransactionDto } from './dto/search-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -46,20 +48,18 @@ export class TransactionsService {
         );
       }
 
-      const newEntries: Entry[] = entries.map(
-        (i) =>
-          new this.entryModel({
-            accountId: i.accountId,
-            credit: i.credit,
-            debit: i.debit,
-          }),
-      );
+      const newEntries: Entry[] = entries.map((i) => ({
+        accountId: i.accountId,
+        credit: i.credit,
+        debit: i.debit,
+      }));
 
       const newTransaction = new this.transactionModel({
         name,
         date,
         description,
         entries: newEntries,
+        totalAmount: debitTotal,
       });
 
       const createdTransaction = await newTransaction.save({ session });
@@ -72,6 +72,59 @@ export class TransactionsService {
     } finally {
       session.endSession();
     }
+  }
+
+  async find(query: SearchTransactionDto): Promise<Transaction[]> {
+    const {
+      name,
+      startAmount,
+      endAmount,
+      startDate,
+      endDate,
+      entries,
+      limit = 30,
+      skip = 0,
+    } = query;
+
+    const filter: FilterQuery<TransactionDocument> = {};
+
+    if (name) filter.name = { $regex: name, $options: 'i' };
+
+    if (startAmount) filter.totalAmount = { $gte: startAmount };
+
+    if (endAmount) filter.totalAmount = { $lte: endAmount };
+
+    if (startDate) filter.date = { $gte: startDate };
+
+    if (endDate) filter.date = { $lte: endDate };
+
+    if (entries && entries[0]) {
+      const matchEntries = entries.map((i) => ({
+        $elemMatch: {
+          accountId: i.accountId,
+          debit: i.debit,
+          credit: i.credit,
+        },
+      }));
+
+      filter.entries = { $all: matchEntries };
+    }
+
+    return await this.transactionModel.find(filter).limit(limit).skip(skip);
+  }
+
+  async findById(id: string): Promise<Transaction | null> {
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException('Invalid object id');
+    }
+
+    const res = await this.transactionModel.findById(id).exec();
+
+    if (!res) {
+      throw new NotFoundException('Transaction id is not found');
+    }
+
+    return res;
   }
 
   private validateEntryStructure(entries: Entry[]) {

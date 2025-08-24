@@ -100,7 +100,7 @@ export class AccountsService {
       filter.groupId = groupId;
     }
 
-    return await this.accountModel.find(filter).skip(skip).limit(limit);
+    return await this.accountModel.find(filter).skip(skip).limit(limit).exec();
   }
 
   async findById(id: string): Promise<Account | null> {
