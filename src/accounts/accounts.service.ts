@@ -8,20 +8,9 @@ import { Account, AccountDocument } from './schemas/account.schema';
 import { FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { CreateAccountDto } from './dto/create-account.dto';
-import { AccountType } from 'src/common/enums/accountType.enum';
 import { Category } from 'src/categories/schemas/category.schema';
 import { Group } from 'src/groups/schemas/group.schema';
 import { SearchAccountDto } from './dto/search-account.dto';
-
-export interface FindAccountOptions {
-  code?: string;
-  type?: AccountType;
-  parentId?: string;
-  level?: number;
-  name?: string;
-  skip?: number;
-  limit?: number;
-}
 
 @Injectable()
 export class AccountsService {

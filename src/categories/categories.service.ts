@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Category, CategoryDocument } from './schemas/category.schema';
-import { FilterQuery, isValidObjectId, Model } from 'mongoose';
+import { DeleteResult, FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category';
+import { validateObjectId } from 'src/common/utils/id.util';
 
 export interface FindCategoryOptions {
   name?: string;
@@ -27,9 +29,12 @@ export class CategoriesService {
     const { name, isNormalBalanceDebit, codePrefix } = createCategoryDto;
 
     if (
-      await this.categoryModel.findOne({
-        $or: [{ name }, { codePrefix }],
-      })
+      await this.categoryModel
+        .findOne({
+          $or: [{ name }, { codePrefix }],
+        })
+        .lean()
+        .exec()
     )
       throw new ConflictException('Name AND code prefix must be unique');
 
@@ -77,5 +82,58 @@ export class CategoriesService {
       throw new NotFoundException('Category not found');
     }
     return result;
+  }
+
+  async update(
+    categoryId: string,
+    dto: UpdateCategoryDto,
+  ): Promise<Category | null> {
+    validateObjectId(categoryId);
+
+    const { name, codePrefix, isNormalBalanceDebit } = dto;
+    const oldCategory = await this.categoryModel
+      .findById(categoryId)
+      .lean()
+      .exec();
+
+    if (!oldCategory) {
+      throw new NotFoundException('Category is not found');
+    }
+
+    if (
+      name &&
+      (await this.categoryModel
+        .findOne({ name, id: { $ne: categoryId } })
+        .exec())
+    ) {
+      throw new ConflictException('Name is already used');
+    }
+
+    if (
+      codePrefix &&
+      (await this.categoryModel.findOne({ codePrefix }).exec())
+    ) {
+      throw new ConflictException('Code Prefix is already used');
+    }
+
+    const res = await this.categoryModel
+      .findByIdAndUpdate(categoryId, { ...dto }, { new: true })
+      .exec();
+
+    return res;
+  }
+
+  async delete(categoryId: string): Promise<Category> {
+    validateObjectId(categoryId);
+
+    const deleted = await this.categoryModel
+      .findByIdAndDelete(categoryId)
+      .exec();
+
+    if (!deleted) {
+      throw new NotFoundException('Category not found');
+    }
+
+    return deleted;
   }
 }
