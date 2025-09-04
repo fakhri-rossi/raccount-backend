@@ -10,6 +10,8 @@ import { FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { Category } from 'src/categories/schemas/category.schema';
 import { SearchGroupDto } from './dto/search-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
+import { validateObjectId } from 'src/common/utils/id.util';
 
 @Injectable()
 export class GroupService {
@@ -74,5 +76,44 @@ export class GroupService {
     }
 
     return result;
+  }
+
+  async updateOne(groupId: string, dto: UpdateGroupDto): Promise<Group | null> {
+    validateObjectId(groupId);
+
+    const { name, categoryId } = dto;
+
+    if (!(await this.groupModel.findById(groupId).lean().exec())) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (!(await this.categoryModel.findById(categoryId).lean().exec())) {
+      throw new NotFoundException('Category not found');
+    }
+
+    if (
+      !(await this.groupModel
+        .findOne({ name, id: { $ne: groupId } })
+        .lean()
+        .exec())
+    ) {
+      throw new ConflictException('Name is already used');
+    }
+
+    return await this.groupModel
+      .findByIdAndUpdate(groupId, { ...dto }, { new: true })
+      .exec();
+  }
+
+  async deleteOne(groupId: string): Promise<Group> {
+    validateObjectId(groupId);
+
+    const deleted = await this.groupModel.findByIdAndDelete(groupId).exec();
+
+    if (!deleted) {
+      throw new NotFoundException('Group not found');
+    }
+
+    return deleted;
   }
 }
