@@ -10,7 +10,7 @@ export class CreateGroupDto {
   @IsString()
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
   description?: string;
