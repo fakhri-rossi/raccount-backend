@@ -47,7 +47,7 @@ export class CategoriesController {
     @Param('id') categoryId: string,
     @Body() body: UpdateCategoryDto,
   ): Promise<Category | null> {
-    return this.categoryService.update(categoryId, body);
+    return this.categoryService.updateOne(categoryId, body);
   }
 
   @Delete('/:id')
