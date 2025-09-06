@@ -32,18 +32,13 @@ export class CategoriesService {
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
     const { name, isNormalBalanceDebit, codePrefix } = createCategoryDto;
 
-    if (
-      await this.categoryModel
-        .findOne({
-          $or: [{ name }, { codePrefix }],
-        })
-        .lean()
-        .exec()
-    )
-      throw new ConflictException('Name AND code prefix must be unique');
+    if (await this.categoryModel.exists({ $or: [{ name }, { codePrefix }] })) {
+      throw new ConflictException('Name or code prefix already registered');
+    }
 
-    if (codePrefix <= 0 || codePrefix > 9)
+    if (codePrefix <= 0 || codePrefix > 9) {
       throw new ConflictException('Code Prefix must be a digit of 1 - 9');
+    }
 
     const createdCategory = new this.categoryModel({
       name,
@@ -65,30 +60,34 @@ export class CategoriesService {
 
     const filter: FilterQuery<CategoryDocument> = {};
 
-    if (name) filter.name = { $regex: name, $options: 'i' };
+    if (name) {
+      filter.name = { $regex: name, $options: 'i' };
+    }
 
-    if (codePrefix) filter.codePrefix = codePrefix;
+    if (codePrefix) {
+      filter.codePrefix = codePrefix;
+    }
 
-    if (isNormalBalanceDebit)
+    if (isNormalBalanceDebit) {
       filter.isNormalBalanceDebit = isNormalBalanceDebit;
+    }
 
     return await this.categoryModel.find(filter).skip(skip).limit(limit).exec();
   }
 
   async findById(categoryId: string): Promise<Category | null> {
-    if (!isValidObjectId(categoryId)) {
-      throw new BadRequestException('Invalid id format');
-    }
+    validateObjectId(categoryId);
 
     const result = await this.categoryModel.findById(categoryId).exec();
 
     if (!result) {
       throw new NotFoundException('Category not found');
     }
+
     return result;
   }
 
-  async update(
+  async updateOne(
     categoryId: string,
     dto: UpdateCategoryDto,
   ): Promise<Category | null> {
@@ -121,7 +120,11 @@ export class CategoriesService {
     }
 
     const res = await this.categoryModel
-      .findByIdAndUpdate(categoryId, { ...dto }, { new: true })
+      .findByIdAndUpdate(
+        categoryId,
+        { name, codePrefix, isNormalBalanceDebit },
+        { new: true },
+      )
       .exec();
 
     return res;
@@ -130,20 +133,15 @@ export class CategoriesService {
   async delete(categoryId: string): Promise<Category | null> {
     validateObjectId(categoryId);
 
-    const category = await this.categoryModel
-      .findById(categoryId)
-      .lean()
-      .exec();
-
-    if (!category) {
+    if (!(await this.categoryModel.exists({ _id: categoryId }))) {
       throw new NotFoundException('Category id not found');
     }
 
-    if (await this.groupModel.find({ categoryId }).lean().exec()[0]) {
+    if (await this.groupModel.exists({ categoryId })) {
       throw new ConflictException("Can't delete: Category contains group");
     }
 
-    if (await this.accountModel.find({ categoryId }).lean().exec()[0]) {
+    if (await this.accountModel.exists({ categoryId })) {
       throw new ConflictException("Can't delete: Category contains account");
     }
 
