@@ -1,8 +1,10 @@
+import { Type } from 'class-transformer';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class SearchAccountDto {
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   code?: number;
 
   @IsString()
@@ -19,9 +21,11 @@ export class SearchAccountDto {
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   skip?: number;
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   limit?: number;
 }
