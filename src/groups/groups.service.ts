@@ -87,11 +87,15 @@ export class GroupService {
       throw new NotFoundException('Group not found');
     }
 
-    if (!(await this.categoryModel.findById(categoryId).lean().exec())) {
+    if (
+      categoryId &&
+      !(await this.categoryModel.findById(categoryId).lean().exec())
+    ) {
       throw new NotFoundException('Category not found');
     }
 
     if (
+      name &&
       !(await this.groupModel
         .findOne({ name, id: { $ne: groupId } })
         .lean()
