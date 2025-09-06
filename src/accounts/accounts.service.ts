@@ -11,6 +11,9 @@ import { CreateAccountDto } from './dto/create-account.dto';
 import { Category } from 'src/categories/schemas/category.schema';
 import { Group } from 'src/groups/schemas/group.schema';
 import { SearchAccountDto } from './dto/search-account.dto';
+import { UpdateAccountDto } from './dto/update-account.dto';
+import { validateObjectId } from 'src/common/utils/id.util';
+import { Transaction } from 'src/transactions/schemas/transaction.schema';
 
 @Injectable()
 export class AccountsService {
@@ -18,6 +21,7 @@ export class AccountsService {
     @InjectModel(Account.name) private accountModel: Model<Account>,
     @InjectModel(Category.name) private categoryModel: Model<Category>,
     @InjectModel(Group.name) private groupModel: Model<Group>,
+    @InjectModel(Transaction.name) private transactionModel: Model<Transaction>,
   ) {}
 
   async create(createAccountDto: CreateAccountDto): Promise<Account> {
@@ -104,5 +108,66 @@ export class AccountsService {
     }
 
     return result;
+  }
+
+  async updateOne(
+    accountId: string,
+    dto: UpdateAccountDto,
+  ): Promise<Account | null> {
+    const { categoryId, code, groupId, name } = dto;
+
+    validateObjectId(accountId);
+
+    if (!(await this.accountModel.exists({ _id: accountId }))) {
+      throw new NotFoundException('Account id not found');
+    }
+
+    if (categoryId && !(await this.categoryModel.exists({ _id: categoryId }))) {
+      throw new NotFoundException('Category id not found');
+    }
+
+    if (groupId && !(await this.groupModel.exists({ _id: groupId }))) {
+      throw new NotFoundException('Group id not found');
+    }
+
+    // Prevent duplicate name
+    if (
+      name &&
+      (await this.accountModel.exists({ name, _id: { $ne: accountId } }))
+    ) {
+      throw new ConflictException('Name is already used, choose another one!');
+    }
+
+    // Prevent duplicate code
+    if (
+      code &&
+      (await this.accountModel.exists({ code, _id: { $ne: accountId } }))
+    ) {
+      throw new ConflictException('Code is already used, choose another one!');
+    }
+
+    return await this.accountModel
+      .findByIdAndUpdate(accountId, { ...dto }, { new: true })
+      .exec();
+  }
+
+  async deleteOne(accountId: string): Promise<Account | null> {
+    validateObjectId(accountId);
+
+    if (!(await this.accountModel.exists({ _id: accountId }))) {
+      throw new NotFoundException('Account ID not found');
+    }
+
+    if (
+      await this.transactionModel.exists({
+        entries: { $elemMatch: { _id: accountId } },
+      })
+    ) {
+      throw new ConflictException(
+        "Can't delete: Account ever used in transaction. You can deactivate the account instead.",
+      );
+    }
+
+    return await this.accountModel.findByIdAndDelete(accountId).exec();
   }
 }

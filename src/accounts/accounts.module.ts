@@ -8,6 +8,10 @@ import {
   CategorySchema,
 } from 'src/categories/schemas/category.schema';
 import { Group, GroupSchema } from 'src/groups/schemas/group.schema';
+import {
+  Transaction,
+  TransactionSchema,
+} from 'src/transactions/schemas/transaction.schema';
 
 @Module({
   imports: [
@@ -23,6 +27,10 @@ import { Group, GroupSchema } from 'src/groups/schemas/group.schema';
       {
         name: Group.name,
         schema: GroupSchema,
+      },
+      {
+        name: Transaction.name,
+        schema: TransactionSchema,
       },
     ]),
   ],
