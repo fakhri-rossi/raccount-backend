@@ -23,9 +23,7 @@ export class GroupService {
   async create(createGroupDto: CreateGroupDto): Promise<Group> {
     const { name, categoryId, description } = createGroupDto;
 
-    if (!isValidObjectId(categoryId)) {
-      throw new BadRequestException('Invalid Id');
-    }
+    validateObjectId(categoryId);
 
     if (await this.groupModel.findOne({ name }).exec()) {
       throw new ConflictException(
@@ -55,8 +53,7 @@ export class GroupService {
     if (name) query.name = { $regex: name, $options: 'i' };
 
     if (categoryId) {
-      if (!isValidObjectId(categoryId))
-        throw new BadRequestException('Invalid Category id');
+      validateObjectId(categoryId);
 
       query.categoryId = categoryId;
     }
@@ -65,9 +62,7 @@ export class GroupService {
   }
 
   async findById(groupId: string): Promise<Group | null> {
-    if (!isValidObjectId(groupId)) {
-      throw new BadRequestException('Invalid Id');
-    }
+    validateObjectId(groupId);
 
     const result = await this.groupModel.findById(groupId).exec();
 
@@ -83,23 +78,17 @@ export class GroupService {
 
     const { name, categoryId } = dto;
 
-    if (!(await this.groupModel.findById(groupId).lean().exec())) {
+    if (!(await this.groupModel.exists({ _id: groupId }))) {
       throw new NotFoundException('Group not found');
     }
 
-    if (
-      categoryId &&
-      !(await this.categoryModel.findById(categoryId).lean().exec())
-    ) {
+    if (categoryId && !(await this.categoryModel.exists({ _id: categoryId }))) {
       throw new NotFoundException('Category not found');
     }
 
     if (
       name &&
-      !(await this.groupModel
-        .findOne({ name, id: { $ne: groupId } })
-        .lean()
-        .exec())
+      !(await this.groupModel.exists({ name, id: { $ne: groupId } }))
     ) {
       throw new ConflictException('Name is already used');
     }
