@@ -98,15 +98,21 @@ export class GroupService {
       .exec();
   }
 
-  async deleteOne(groupId: string): Promise<Group> {
+  async deleteOne(groupId: string): Promise<Group | null> {
     validateObjectId(groupId);
 
-    const deleted = await this.groupModel.findByIdAndDelete(groupId).exec();
+    const group = await this.groupModel.findById(groupId).exec();
 
-    if (!deleted) {
-      throw new NotFoundException('Group not found');
+    if (!group) {
+      throw new NotFoundException('Group id not found');
     }
 
-    return deleted;
+    if (group.accounts[0]) {
+      throw new ConflictException(
+        "Can't delete group: The group contains account",
+      );
+    }
+
+    return await this.groupModel.findByIdAndDelete(groupId).exec();
   }
 }
