@@ -10,6 +10,8 @@ import { DeleteResult, FilterQuery, isValidObjectId, Model } from 'mongoose';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category';
 import { validateObjectId } from 'src/common/utils/id.util';
+import { Account } from 'src/accounts/schemas/account.schema';
+import { Group } from 'src/groups/schemas/group.schema';
 
 export interface FindCategoryOptions {
   name?: string;
@@ -23,6 +25,8 @@ export interface FindCategoryOptions {
 export class CategoriesService {
   constructor(
     @InjectModel(Category.name) private categoryModel: Model<Category>,
+    @InjectModel(Account.name) private accountModel: Model<Account>,
+    @InjectModel(Group.name) private groupModel: Model<Group>,
   ) {}
 
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
@@ -123,17 +127,26 @@ export class CategoriesService {
     return res;
   }
 
-  async delete(categoryId: string): Promise<Category> {
+  async delete(categoryId: string): Promise<Category | null> {
     validateObjectId(categoryId);
 
-    const deleted = await this.categoryModel
-      .findByIdAndDelete(categoryId)
+    const category = await this.categoryModel
+      .findById(categoryId)
+      .lean()
       .exec();
 
-    if (!deleted) {
-      throw new NotFoundException('Category not found');
+    if (!category) {
+      throw new NotFoundException('Category id not found');
     }
 
-    return deleted;
+    if (await this.groupModel.find({ categoryId }).lean().exec()[0]) {
+      throw new ConflictException("Can't delete: Category contains group");
+    }
+
+    if (await this.accountModel.find({ categoryId }).lean().exec()[0]) {
+      throw new ConflictException("Can't delete: Category contains account");
+    }
+
+    return await this.categoryModel.findByIdAndDelete(categoryId).exec();
   }
 }
