@@ -135,7 +135,7 @@ export class AccountsService {
       name &&
       (await this.accountModel.exists({ name, _id: { $ne: accountId } }))
     ) {
-      throw new ConflictException('Name is already used, choose another one!');
+      throw new ConflictException('Account name is already used');
     }
 
     // Prevent duplicate code
@@ -143,7 +143,7 @@ export class AccountsService {
       code &&
       (await this.accountModel.exists({ code, _id: { $ne: accountId } }))
     ) {
-      throw new ConflictException('Code is already used, choose another one!');
+      throw new ConflictException('Account code is already used');
     }
 
     return await this.accountModel
