@@ -29,5 +29,5 @@ export class CreateTransactionDto {
   })
   @ValidateNested({ each: true })
   @Type(() => EntryDto)
-  entries: Entry[];
+  entries: EntryDto[];
 }
