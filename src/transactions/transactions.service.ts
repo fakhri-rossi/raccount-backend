@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
@@ -12,6 +11,10 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { Account } from 'src/accounts/schemas/account.schema';
 import { SearchTransactionDto } from './dto/search-transaction.dto';
 import { SearchEntryDto } from './dto/search-entry.dto';
+import { validateObjectId } from 'src/common/utils/id.util';
+import { EntryDto } from './dto/entry.dto';
+import { UpdateAccountDto } from 'src/accounts/dto/update-account.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -28,51 +31,34 @@ export class TransactionsService {
     description,
     entries,
   }: CreateTransactionDto): Promise<Transaction> {
-    const session = await this.connection.startSession();
+    await this.validateEachEntry(entries);
 
-    session.startTransaction();
+    // Validate the balance of amount of debits and credits, they have to be the same!
+    // debit === credit
+    const debitTotal = this.getTotal(entries, 'debit');
+    const creditTotal = this.getTotal(entries, 'credit');
 
-    this.validateEntryStructure(entries);
-
-    try {
-      this.validateEntryStructure(entries);
-      await this.validateEntriesAsync(entries, session);
-
-      // Validate the balance of amount of debits and credits, they have to be the same!
-      // debit === credit
-      const debitTotal = this.getTotal(entries, 'debit');
-      const creditTotal = this.getTotal(entries, 'credit');
-
-      if (debitTotal !== creditTotal) {
-        throw new BadRequestException(
-          `Debit and credit are not balance!\nDebit Total: ${debitTotal}\nCredit Total: ${creditTotal}`,
-        );
-      }
-
-      const newEntries: Entry[] = entries.map((i) => ({
-        accountId: i.accountId,
-        credit: i.credit,
-        debit: i.debit,
-      }));
-
-      const newTransaction = new this.transactionModel({
-        name,
-        date,
-        description,
-        entries: newEntries,
-        totalAmount: debitTotal,
-      });
-
-      const createdTransaction = await newTransaction.save({ session });
-      await session.commitTransaction();
-      return createdTransaction;
-    } catch (error) {
-      console.log('Transaction creation failed: ', error);
-      await session.abortTransaction();
-      throw new InternalServerErrorException(error.message);
-    } finally {
-      session.endSession();
+    if (debitTotal !== creditTotal) {
+      throw new BadRequestException(
+        `Debit and credit are not balance!\nDebit Total: ${debitTotal}\nCredit Total: ${creditTotal}`,
+      );
     }
+
+    const newEntries: EntryDto[] = entries.map((i) => ({
+      accountId: i.accountId,
+      credit: i.credit,
+      debit: i.debit,
+    }));
+
+    const newTransaction = new this.transactionModel({
+      name,
+      date,
+      description,
+      entries: newEntries,
+      totalAmount: debitTotal,
+    });
+
+    return newTransaction.save();
   }
 
   async find(query: SearchTransactionDto): Promise<Transaction[]> {
@@ -122,6 +108,45 @@ export class TransactionsService {
     return res;
   }
 
+  async updateOne(
+    transactionId: string,
+    dto: UpdateTransactionDto,
+  ): Promise<Transaction | null> {
+    validateObjectId(transactionId);
+
+    const { date, name, description, entries } = dto;
+
+    if (!(await this.transactionModel.exists({ _id: transactionId }))) {
+      throw new NotFoundException('Transaction id not found');
+    }
+
+    if (entries) {
+      await this.validateEachEntry(entries);
+    }
+
+    return await this.transactionModel
+      .findByIdAndUpdate(
+        transactionId,
+        { date, name, description, entries },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async deleteOne(transactionId: string): Promise<Transaction | null> {
+    validateObjectId(transactionId);
+
+    const deleted = await this.transactionModel
+      .findByIdAndDelete(transactionId)
+      .exec();
+
+    if (!deleted) {
+      throw new NotFoundException('Account id not found');
+    }
+
+    return deleted;
+  }
+
   private filterByEntries(entries: SearchEntryDto[]) {
     const matchEntries = entries.map((i) => {
       const elemMatch: any = {
@@ -164,7 +189,7 @@ export class TransactionsService {
     return matchEntries;
   }
 
-  private validateEntryStructure(entries: Entry[]) {
+  private async validateEachEntry(entries: EntryDto[]) {
     // Forbid empty entry
     if (entries.length < 2) {
       throw new BadRequestException('Entries cannot be empty or single');
@@ -172,49 +197,39 @@ export class TransactionsService {
 
     // Forbid multiple same account in an entry
     const seen = new Set();
+
     for (const entry of entries) {
+      // Validate account id
+      validateObjectId(entry.accountId);
+
+      if (!(await this.accountModel.exists({ _id: entry.accountId }))) {
+        throw new BadRequestException('Account id not found');
+      }
+
       if (seen.has(entry.accountId)) {
         throw new BadRequestException(
           'An entry cannot have multiple same account at once!',
         );
       }
       seen.add(entry.accountId);
-    }
-  }
 
-  private async validateEntriesAsync(
-    entries: Entry[],
-    session: any,
-  ): Promise<void> {
-    for (const item of entries) {
-      // Forbid negative value of creadit and debit
-      if (item.credit < 0 || item.debit < 0) {
+      // Forbid negative value of credit and debit
+      if (entry.credit < 0 || entry.debit < 0) {
         throw new BadRequestException(
           "Debit and credit amounts can't be negative!",
         );
       }
 
       // Forbid debit and credit at once
-      if (item.debit > 0 && item.credit > 0) {
+      if (entry.debit > 0 && entry.credit > 0) {
         throw new BadRequestException(
           "An entry can't have both debit and credit",
         );
       }
-
-      // Forbid Invalid account id
-      if (
-        !isValidObjectId(item.accountId) ||
-        !(await this.accountModel
-          .findById(item.accountId)
-          .session(session)
-          .exec())
-      ) {
-        throw new BadRequestException('Invalid Id or non-existent account id');
-      }
     }
   }
 
-  private getTotal(entries: Entry[], type: 'credit' | 'debit'): number {
+  private getTotal(entries: EntryDto[], type: 'credit' | 'debit'): number {
     return entries.reduce((sum, entry) => sum + (entry[type] || 0), 0);
   }
 }
