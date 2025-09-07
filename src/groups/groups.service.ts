@@ -25,7 +25,7 @@ export class GroupService {
 
     validateObjectId(categoryId);
 
-    if (await this.groupModel.findOne({ name }).exec()) {
+    if (await this.groupModel.exists({ name })) {
       throw new ConflictException(
         'Group name is already registered, choose another one!',
       );
@@ -88,7 +88,7 @@ export class GroupService {
 
     if (
       name &&
-      !(await this.groupModel.exists({ name, id: { $ne: groupId } }))
+      (await this.groupModel.exists({ name, id: { $ne: groupId } }))
     ) {
       throw new ConflictException('Name is already used');
     }
