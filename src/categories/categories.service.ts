@@ -94,27 +94,23 @@ export class CategoriesService {
     validateObjectId(categoryId);
 
     const { name, codePrefix, isNormalBalanceDebit } = dto;
-    const oldCategory = await this.categoryModel
-      .findById(categoryId)
-      .lean()
-      .exec();
-
-    if (!oldCategory) {
+    if (await this.categoryModel.exists({ _id: categoryId })) {
       throw new NotFoundException('Category is not found');
     }
 
     if (
       name &&
-      (await this.categoryModel
-        .findOne({ name, id: { $ne: categoryId } })
-        .exec())
+      (await this.categoryModel.exists({ name, _id: { $ne: categoryId } }))
     ) {
       throw new ConflictException('Name is already used');
     }
 
     if (
       codePrefix &&
-      (await this.categoryModel.findOne({ codePrefix }).exec())
+      (await this.categoryModel.exists({
+        codePrefix,
+        _id: { $ne: categoryId },
+      }))
     ) {
       throw new ConflictException('Code Prefix is already used');
     }
