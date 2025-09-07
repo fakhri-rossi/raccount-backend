@@ -58,8 +58,12 @@ export class SearchTransactionDto {
     type: () => SearchEntryDto,
     isArray: true,
     example: [
-      { accountId: '6885f9b1e4b59765cd449596', debit: 1000, credit: 0 },
-      { accountId: '7655f9b1e4b59765cd449543', debit: 0, credit: 1000 },
+      { accountId: '6885f9b1e4b59765cd449596', startDebit: 0, endDebit: 10000 },
+      {
+        accountId: '6885fcb8e4b59765cd4495a0',
+        startCredit: 0,
+        endCredit: 10000,
+      },
     ],
   })
   @ValidateNested({ each: true })

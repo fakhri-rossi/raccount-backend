@@ -11,6 +11,7 @@ import { Entry } from './schemas/entry.schema';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { Account } from 'src/accounts/schemas/account.schema';
 import { SearchTransactionDto } from './dto/search-transaction.dto';
+import { SearchEntryDto } from './dto/search-entry.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -99,13 +100,7 @@ export class TransactionsService {
     if (endDate) filter.date = { $lte: endDate };
 
     if (entries && entries[0]) {
-      const matchEntries = entries.map((i) => ({
-        $elemMatch: {
-          accountId: i.accountId,
-          debit: i.debit,
-          credit: i.credit,
-        },
-      }));
+      const matchEntries = this.filterByEntries(entries);
 
       filter.entries = { $all: matchEntries };
     }
@@ -125,6 +120,48 @@ export class TransactionsService {
     }
 
     return res;
+  }
+
+  private filterByEntries(entries: SearchEntryDto[]) {
+    const matchEntries = entries.map((i) => {
+      const elemMatch: any = {
+        accountId: i.accountId,
+      };
+
+      // Validate: only have debit or credit range at once
+      const hasDebit = i.startDebit || i.endDebit;
+      const hasCredit = i.startCredit || i.endCredit;
+
+      if (hasDebit && hasCredit) {
+        throw new BadRequestException(
+          'May only input one: Credit range or Debit range',
+        );
+      }
+
+      if (hasDebit) {
+        elemMatch.debit = {};
+        if (i.startDebit) {
+          elemMatch.debit.$gte = i.startDebit;
+        }
+        if (i.endDebit) {
+          elemMatch.debit.$lte = i.endDebit;
+        }
+      }
+
+      if (hasCredit) {
+        elemMatch.credit = {};
+        if (i.startCredit) {
+          elemMatch.credit.$gte = i.startCredit;
+        }
+        if (i.endCredit) {
+          elemMatch.credit.$lte = i.endCredit;
+        }
+      }
+
+      return { $elemMatch: elemMatch };
+    });
+
+    return matchEntries;
   }
 
   private validateEntryStructure(entries: Entry[]) {
