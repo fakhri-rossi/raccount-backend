@@ -108,6 +108,45 @@ export class TransactionsService {
     return res;
   }
 
+  async updateOne(
+    transactionId: string,
+    dto: UpdateTransactionDto,
+  ): Promise<Transaction | null> {
+    validateObjectId(transactionId);
+
+    const { date, name, description, entries } = dto;
+
+    if (!(await this.transactionModel.exists({ _id: transactionId }))) {
+      throw new NotFoundException('Transaction id not found');
+    }
+
+    if (entries) {
+      await this.validateEachEntry(entries);
+    }
+
+    return await this.transactionModel
+      .findByIdAndUpdate(
+        transactionId,
+        { date, name, description, entries },
+        { new: true },
+      )
+      .exec();
+  }
+
+  async deleteOne(transactionId: string): Promise<Transaction | null> {
+    validateObjectId(transactionId);
+
+    const deleted = await this.transactionModel
+      .findByIdAndDelete(transactionId)
+      .exec();
+
+    if (!deleted) {
+      throw new NotFoundException('Account id not found');
+    }
+
+    return deleted;
+  }
+
   private filterByEntries(entries: SearchEntryDto[]) {
     const matchEntries = entries.map((i) => {
       const elemMatch: any = {
